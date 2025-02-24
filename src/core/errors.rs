@@ -4,7 +4,8 @@ use std::{error::Error, fmt::Display};
 pub enum WebMQError {
     Config(String),
     File(String),
-    TLS(String)
+    TLS(String),
+    Unrecoverable,
 }
 
 impl Display for WebMQError {
@@ -20,6 +21,7 @@ impl WebMQError {
             WebMQError::Config(msg) => msg.as_str(),
             WebMQError::File(msg) => msg.as_str(),
             WebMQError::TLS(msg) => msg.as_str(),
+            WebMQError::Unrecoverable => "The program encountered an unrecoverable error.",
         }
     }
 }

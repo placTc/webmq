@@ -10,14 +10,14 @@ pub struct NetworkSettings {
     #[serde(default = "NetworkSettings::default_port")]
     pub port: u16,
     #[serde(default = "TLSSettings::default")]
-    pub tls: TLSSettings
+    pub tls: TLSSettings,
 }
 
 impl NetworkSettings {
     fn default_ip() -> String {
         DEFAULT_IP.to_string()
     }
-    
+
     fn default_port() -> u16 {
         DEFAULT_PORT
     }
@@ -25,7 +25,10 @@ impl NetworkSettings {
 
 impl Default for NetworkSettings {
     fn default() -> Self {
-        Self { ip: Self::default_ip(), port: Self::default_port(), tls: TLSSettings::default() }
+        Self {
+            ip: Self::default_ip(),
+            port: Self::default_port(),
+            tls: TLSSettings::default(),
+        }
     }
 }
-

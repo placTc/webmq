@@ -1,32 +1,39 @@
 use super::network::NetworkSettings;
 use config::Config;
-use log::warn;
+use log::{info, warn};
+
+const CONFIGURATION_FILE: &str = "./configuration";
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Settings {
     #[serde(default = "NetworkSettings::default")]
-    pub network: NetworkSettings
+    pub network: NetworkSettings,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { network: NetworkSettings::default() }
+        Self {
+            network: NetworkSettings::default(),
+        }
     }
 }
 
 impl Settings {
     pub fn load() -> Self {
         let raw_config = Config::builder()
-        .add_source(config::File::with_name("./configuration"))
-        .build();
-    
-    
+            .add_source(config::File::with_name(CONFIGURATION_FILE))
+            .build();
+
         match raw_config {
             Ok(config) => {
-                Self::try_deserialize_config(config)
-            },
+                let c = Self::try_deserialize_config(config);
+                info!("Loaded configuration from {CONFIGURATION_FILE}");
+                c
+            }
             Err(error) => {
-                warn!("Failed to load system configuration: {error}. Falling back to default.");
+                warn!(
+                    "Failed to load system configuration: {error}. Attempting to fall back to defaults."
+                );
                 Self::default()
             }
         }
@@ -36,11 +43,11 @@ impl Settings {
         match config.try_deserialize() {
             Ok(config) => config,
             Err(error) => {
-                warn!("Failed to parse system configuration: {error}. Falling back to default");
+                warn!(
+                    "Failed to parse system configuration: {error}. Attempting to fall back to defaults."
+                );
                 Self::default()
             }
         }
     }
 }
-
-
