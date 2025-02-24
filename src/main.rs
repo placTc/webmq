@@ -33,49 +33,5 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     let config = Settings::load();
 
-    let addr = SocketAddrV4::new(
-        Ipv4Addr::from_str(config.network.ip.as_str())?,
-        config.network.port,
-    );
-
-    let tls_acceptor = match create_tls_acceptor(
-        Path::new(config.network.tls.certificate.as_str()),
-        Path::new(config.network.tls.private_key.as_str()),
-    ) {
-        Ok(l) => l,
-        Err(e) => {
-            error!("{e}");
-            return Err(WebMQError::Unrecoverable.into());
-        }
-    };
-    info!("Initialized TLS acceptor");
-
-    let mut listener: TlsListener<TcpListener, TlsAcceptor> =
-        TlsListener::new(tls_acceptor, TcpListener::bind(addr).await?);    
-
-    loop {
-        let (stream, _) = match listener.accept().await {
-            Ok(r) => r,
-            Err(e) => {
-                let Some(peer_addr) = e.peer_addr() else {
-                    warn!("{e}");
-                    continue;
-                };
-                warn!("Error during TLS handshake for peer {peer_addr}: {e}");
-                continue;
-            }
-        };
-
-        let io = TokioIo::new(stream);
-
-        tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .timer(TokioTimer::new())
-                .serve_connection(io, service_fn(hello))
-                .await
-            {
-                warn!("Error service connection: {:?}", err);
-            }
-        });
-    }
+    Ok(())
 }
