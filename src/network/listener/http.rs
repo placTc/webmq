@@ -1,22 +1,35 @@
-use std::{convert::Infallible, error::Error, net::{Ipv4Addr, SocketAddrV4}, path::Path};
+use std::{
+    convert::Infallible,
+    error::Error,
+    net::{Ipv4Addr, SocketAddrV4},
+    path::Path,
+};
 
+use async_trait::async_trait;
 use http_body_util::Full;
-use hyper::{body::Bytes, server::conn::http1, service::service_fn, Request, Response};
+use hyper::{Request, Response, body::Bytes, server::conn::http1, service::service_fn};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use log::{error, info, warn};
-use tls_listener::{rustls::TlsAcceptor, TlsListener};
+use tls_listener::{TlsListener, rustls::TlsAcceptor};
 use tokio::net::TcpListener;
 
-use crate::{core::{config::tls::TLSSettings, errors::WebMQError, traits::AsyncStart}, network::tls::acceptor::create_tls_acceptor};
+use crate::{
+    core::{config::tls::TlsSettings, errors::WebMQError, traits::AsyncStart},
+    network::tls::acceptor::create_tls_acceptor,
+};
 
-pub struct HTTPListener {
-    listener: TlsListener<TcpListener, TlsAcceptor>
+pub struct HttpsListener {
+    listener: TlsListener<TcpListener, TlsAcceptor>,
 }
 
-impl HTTPListener {
-    pub async fn new(ip: Ipv4Addr, port: u16, tls_config: TLSSettings) -> Result<Self, Box<dyn Error>> {
+impl HttpsListener {
+    pub async fn new(
+        ip: Ipv4Addr,
+        port: u16,
+        tls_config: TlsSettings,
+    ) -> Result<Self, Box<dyn Error>> {
         let addr = SocketAddrV4::new(ip, port);
-    
+
         let tls_acceptor = match create_tls_acceptor(
             Path::new(tls_config.certificate.as_str()),
             Path::new(tls_config.private_key.as_str()),
@@ -28,16 +41,16 @@ impl HTTPListener {
             }
         };
         info!("Initialized TLS acceptor");
-    
-        let listener: TlsListener<TcpListener, TlsAcceptor> = TlsListener::new(tls_acceptor, TcpListener::bind(addr).await?);    
-    
-        Ok(HTTPListener {
-            listener
-        })
+
+        let listener: TlsListener<TcpListener, TlsAcceptor> =
+            TlsListener::new(tls_acceptor, TcpListener::bind(addr).await?);
+
+        Ok(HttpsListener { listener })
     }
 }
 
-impl AsyncStart for HTTPListener {
+#[async_trait]
+impl AsyncStart for HttpsListener {
     async fn start(&mut self) {
         loop {
             let (stream, _) = match self.listener.accept().await {
@@ -51,9 +64,9 @@ impl AsyncStart for HTTPListener {
                     continue;
                 }
             };
-    
+
             let io = TokioIo::new(stream);
-    
+
             tokio::task::spawn(async move {
                 if let Err(err) = http1::Builder::new()
                     .timer(TokioTimer::new())
@@ -66,7 +79,6 @@ impl AsyncStart for HTTPListener {
         }
     }
 }
-
 
 async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
     Ok(Response::new(Full::new("Hello, World!".as_bytes().into())))

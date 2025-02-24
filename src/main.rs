@@ -1,26 +1,15 @@
 use core::config::main::Settings;
 use core::errors::WebMQError;
-use network::tls::acceptor::create_tls_acceptor;
-use std::convert::Infallible;
-use std::error::Error;
-use std::net::{Ipv4Addr, SocketAddrV4};
-use std::path::Path;
-use std::str::FromStr;
+use core::traits::AsyncStart;
+use std::{error::Error, net::Ipv4Addr, str::FromStr};
 
-use http_body_util::Full;
-use hyper::body::Bytes;
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Request, Response};
-use hyper_util::rt::{TokioIo, TokioTimer};
-use log::{debug, error, info, warn};
-use tls_listener::TlsListener;
-use tls_listener::rustls::{rustls, TlsAcceptor};
-use tokio::net::TcpListener;
+use log::{debug, error};
+use network::listener::http::HttpsListener;
+use tls_listener::rustls::rustls;
 
 pub mod core;
-pub mod utils;
 pub mod network;
+pub mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -32,6 +21,21 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     debug!("Installed rustls cryptography provider.");
 
     let config = Settings::load();
+
+    let Ok(ip) = Ipv4Addr::from_str(config.network.ip.as_str()) else {
+        error!("Couldn't parse IP adress");
+        return Err(WebMQError::Unrecoverable.into());
+    };
+
+    let mut listener: Box<dyn AsyncStart> = match HttpsListener::new(ip, config.network.port, config.network.tls).await {
+        Ok(l) => Box::new(l),
+        Err(e) => {
+            error!("Couldn't create listener: {e}");
+            return Err(WebMQError::Unrecoverable.into());
+        }
+    };
+
+    listener.start().await;
 
     Ok(())
 }

@@ -1,3 +1,6 @@
+use async_trait::async_trait;
+
+#[async_trait]
 pub trait AsyncStart {
-    fn start(&mut self) -> impl Future<Output = ()>;
+    async fn start(&mut self);
 }

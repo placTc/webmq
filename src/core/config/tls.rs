@@ -1,14 +1,14 @@
 #[derive(Debug, serde::Deserialize)]
-pub struct TLSSettings {
-    #[serde(default = "TLSSettings::default_certificate")]
+pub struct TlsSettings {
+    #[serde(default = "TlsSettings::default_certificate")]
     pub certificate: String,
-    #[serde(default = "TLSSettings::default_private_key")]
+    #[serde(default = "TlsSettings::default_private_key")]
     pub private_key: String,
-    #[serde(default = "TLSSettings::default_algorithm")]
+    #[serde(default = "TlsSettings::default_algorithm")]
     pub algorithm: String,
 }
 
-impl TLSSettings {
+impl TlsSettings {
     fn default_certificate() -> String {
         "./certificate.crt".to_string()
     }
@@ -22,7 +22,7 @@ impl TLSSettings {
     }
 }
 
-impl Default for TLSSettings {
+impl Default for TlsSettings {
     fn default() -> Self {
         Self {
             certificate: Self::default_certificate(),

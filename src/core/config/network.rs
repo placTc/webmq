@@ -1,4 +1,4 @@
-use crate::core::config::tls::TLSSettings;
+use crate::core::config::tls::TlsSettings;
 
 const DEFAULT_IP: &str = "0.0.0.0";
 const DEFAULT_PORT: u16 = 8060;
@@ -9,8 +9,8 @@ pub struct NetworkSettings {
     pub ip: String,
     #[serde(default = "NetworkSettings::default_port")]
     pub port: u16,
-    #[serde(default = "TLSSettings::default")]
-    pub tls: TLSSettings,
+    #[serde(default = "TlsSettings::default")]
+    pub tls: TlsSettings,
 }
 
 impl NetworkSettings {
@@ -28,7 +28,7 @@ impl Default for NetworkSettings {
         Self {
             ip: Self::default_ip(),
             port: Self::default_port(),
-            tls: TLSSettings::default(),
+            tls: TlsSettings::default(),
         }
     }
 }
