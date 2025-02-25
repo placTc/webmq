@@ -3,11 +3,10 @@ use std::{path::Path, sync::Arc};
 use log::{error, info};
 use tls_listener::rustls::{
     TlsAcceptor,
-    rustls::{
-        ServerConfig,
-        pki_types::{CertificateDer, PrivateKeyDer},
-    },
+    rustls::pki_types::{CertificateDer, PrivateKeyDer},
 };
+
+use rustls::ServerConfig;
 
 use crate::{core::errors::WebMQError, utils::file::get_file_buffer};
 

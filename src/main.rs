@@ -4,7 +4,7 @@ use core::traits::AsyncStart;
 use std::{error::Error, net::Ipv4Addr, str::FromStr};
 
 use log::{debug, error};
-use network::listener::http::HttpsListener;
+use network::listener::https::HttpsListener;
 use tls_listener::rustls::rustls;
 
 pub mod core;
@@ -27,13 +27,14 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         return Err(WebMQError::Unrecoverable.into());
     };
 
-    let mut listener: Box<dyn AsyncStart> = match HttpsListener::new(ip, config.network.port, config.network.tls).await {
-        Ok(l) => Box::new(l),
-        Err(e) => {
-            error!("Couldn't create listener: {e}");
-            return Err(WebMQError::Unrecoverable.into());
-        }
-    };
+    let mut listener: Box<dyn AsyncStart> =
+        match HttpsListener::new(ip, config.network.port, config.network.tls).await {
+            Ok(l) => Box::new(l),
+            Err(e) => {
+                error!("Couldn't create listener: {e}");
+                return Err(WebMQError::Unrecoverable.into());
+            }
+        };
 
     listener.start().await;
 
