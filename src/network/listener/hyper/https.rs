@@ -15,13 +15,11 @@ use tokio::{
 };
 
 use crate::{
-    core::{
-        config::tls::TlsSettings,
-        errors::WebMQError,
-        traits::AsyncStart,
-    },
-    network::{listener::common::hyper_http1_handler, tls::acceptor::create_tls_acceptor},
+    core::{config::tls::TlsSettings, errors::WebMQError, traits::AsyncStart},
+    network::tls::acceptor::create_tls_acceptor,
 };
+
+use super::common::hyper_http1_handler;
 
 use super::common::HyperSvc;
 

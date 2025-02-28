@@ -5,18 +5,15 @@ use std::{
 
 use async_trait::async_trait;
 
-use log::{debug, error,};
+use log::{debug, error};
 use tokio::{
     net::{TcpListener, TcpStream},
     task::JoinHandle,
 };
 
-use crate::core::{
-    errors::WebMQError,
-    traits::AsyncStart,
-};
+use crate::core::{errors::WebMQError, traits::AsyncStart};
 
-use super::common::{hyper_http1_handler, HyperSvc};
+use super::common::{HyperSvc, hyper_http1_handler};
 
 #[derive(Clone)]
 pub struct HttpListener {
