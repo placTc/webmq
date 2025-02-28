@@ -2,19 +2,10 @@ use std::{
     error::Error,
     net::{Ipv4Addr, SocketAddrV4},
     path::Path,
-    pin::Pin,
     sync::Arc,
 };
 
 use async_trait::async_trait;
-use http_body_util::Full;
-use hyper::{
-    Request, Response,
-    body::{Bytes, Incoming},
-    server::conn::http1,
-    service::service_fn,
-};
-use hyper_util::rt::{TokioIo, TokioTimer};
 use log::{debug, error, info, warn};
 use tls_listener::rustls::TlsAcceptor;
 use tokio::{
@@ -27,26 +18,21 @@ use crate::{
     core::{
         config::tls::TlsSettings,
         errors::WebMQError,
-        traits::{AsyncStart, Service},
+        traits::AsyncStart,
     },
-    network::tls::acceptor::create_tls_acceptor,
+    network::{listener::common::hyper_http1_handler, tls::acceptor::create_tls_acceptor},
 };
+
+use super::common::HyperSvc;
 
 const TLS_CLIENT_HELLO_HEAD_SIZE: usize = 3;
 const TLS_CLIENT_HELLO_HEAD: [u8; TLS_CLIENT_HELLO_HEAD_SIZE] = [0x16, 0x03, 0x01];
-
-type Req = Request<Incoming>;
-type Pb<T> = Pin<Box<T>>;
-type Res = Result<Response<Full<Bytes>>, Err>;
-type Err = WebMQError;
-type Fut<T> = Pb<dyn Future<Output = T> + Send>;
-type Svc = Arc<dyn Service<Input = Req, Output = Fut<Res>> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct HttpsListener {
     tls_acceptor: TlsAcceptor,
     tcp_listener: Arc<TcpListener>,
-    service: Svc,
+    service: Arc<HyperSvc>,
 }
 
 impl HttpsListener {
@@ -54,7 +40,7 @@ impl HttpsListener {
         ip: Ipv4Addr,
         port: u16,
         tls_config: TlsSettings,
-        service: Svc,
+        service: Arc<HyperSvc>,
     ) -> Result<Self, WebMQError> {
         let addr = SocketAddrV4::new(ip, port);
 
@@ -88,7 +74,7 @@ impl HttpsListener {
     fn spawn_handler_task(&self, mut tcp_stream: TcpStream) -> JoinHandle<()> {
         let handler = self.clone();
         tokio::task::spawn(async move {
-            if let Some(err) = confirm_request_as_tls(&tcp_stream).await {
+            if let Some(err) = is_tls(&tcp_stream).await {
                 warn!("{err}");
                 discard_stream(&mut tcp_stream).await;
                 return;
@@ -99,17 +85,9 @@ impl HttpsListener {
     }
 
     async fn handle_tls_connection(&self, tcp_stream: TcpStream) {
-        let svc = service_fn(async |request| self.service.call(request).await);
         match self.tls_acceptor.accept(tcp_stream).await {
             Ok(stream) => {
-                let io = TokioIo::new(stream);
-                if let Err(err) = http1::Builder::new()
-                    .timer(TokioTimer::new())
-                    .serve_connection(io, svc)
-                    .await
-                {
-                    warn!("Error in service connection: {}", err);
-                }
+                hyper_http1_handler(stream, self.service.as_ref()).await;
             }
             Err(e) => warn!("Error during TLS handshake: {e}"),
         }
@@ -134,7 +112,7 @@ impl AsyncStart for HttpsListener {
     }
 }
 
-async fn confirm_request_as_tls(stream: &TcpStream) -> Option<impl Error + use<>> {
+async fn is_tls(stream: &TcpStream) -> Option<impl Error + use<>> {
     let mut buf = [0u8; TLS_CLIENT_HELLO_HEAD_SIZE];
     if stream.peek(&mut buf).await.is_ok() && buf != TLS_CLIENT_HELLO_HEAD {
         let Ok(peer_addr) = stream.peer_addr() else {

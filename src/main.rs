@@ -63,7 +63,7 @@ impl Service for HyperService {
     fn call(&self, _: Self::Input) -> Self::Output {
         Box::pin(async move {
             Ok(Response::builder()
-                .header("Connection", "close")
+                .header("Connection", "Keep-Alive")
                 .body(Full::new(Bytes::from("Hello, World!")))
                 .unwrap())
         })
