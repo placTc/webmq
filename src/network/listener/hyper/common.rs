@@ -11,7 +11,7 @@ use hyper_util::rt::{TokioIo, TokioTimer};
 use log::warn;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::core::{errors::WebMQError, traits::Service};
+use crate::core::{errors::WebMQError, traits::Adapter};
 
 type Err = WebMQError;
 type Pb<T> = Pin<Box<T>>;
@@ -19,7 +19,7 @@ type Fut<T> = Pb<dyn Future<Output = T> + Send>;
 
 pub type Req = Request<Incoming>;
 pub type Res = Result<Response<Full<Bytes>>, Err>;
-pub type HyperSvc = dyn Service<Input = Req, Output = Fut<Res>> + Send + Sync;
+pub type HyperSvc = dyn Adapter<Input = Req, Output = Fut<Res>> + Send + Sync;
 
 pub async fn hyper_http1_handler<S>(stream: S, service: &HyperSvc)
 where

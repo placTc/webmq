@@ -1,13 +1,10 @@
 use core::errors::WebMQError;
 use core::traits::AsyncStart;
-use core::{config::main::Settings, traits::Service};
-use std::pin::Pin;
+use core::config::main::Settings;
 use std::sync::Arc;
 use std::{error::Error, net::Ipv4Addr, str::FromStr};
 
-use http_body_util::Full;
-use hyper::body::{Bytes, Incoming};
-use hyper::{Request, Response};
+use adapter::hyper_adapter::HyperAdapter;
 use log::{debug, error};
 use network::listener::hyper::https::HttpsListener;
 use tls_listener::rustls::rustls;
@@ -15,6 +12,7 @@ use tls_listener::rustls::rustls;
 pub mod core;
 pub mod network;
 pub mod utils;
+pub mod adapter;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -36,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         ip,
         config.network.port,
         config.network.tls,
-        Arc::new(HyperService {}),
+        Arc::new(HyperAdapter {}),
     )
     .await
     {
@@ -50,22 +48,4 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     listener.start().await;
 
     Ok(())
-}
-
-struct HyperService {}
-
-type Res = Response<Full<Bytes>>;
-
-impl Service for HyperService {
-    type Input = Request<Incoming>;
-    type Output = Pin<Box<dyn Future<Output = Result<Res, WebMQError>> + Send>>;
-
-    fn call(&self, _: Self::Input) -> Self::Output {
-        Box::pin(async move {
-            Ok(Response::builder()
-                .header("Connection", "Keep-Alive")
-                .body(Full::new(Bytes::from("Hello, World!")))
-                .unwrap())
-        })
-    }
 }

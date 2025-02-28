@@ -4,7 +4,7 @@ pub trait AsyncStart {
     async fn start(&self);
 }
 
-pub trait Service {
+pub trait Adapter {
     type Input;
     type Output;
 
