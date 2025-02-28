@@ -42,6 +42,7 @@ type Err = WebMQError;
 type Fut<T> = Pb<dyn Future<Output = T> + Send>;
 type Svc = Arc<dyn Service<Input = Req, Output = Fut<Res>> + Send + Sync>;
 
+#[derive(Clone)]
 pub struct HttpsListener {
     tls_acceptor: TlsAcceptor,
     tcp_listener: Arc<TcpListener>,
@@ -83,41 +84,38 @@ impl HttpsListener {
             service,
         })
     }
-}
 
-fn spawn_handler_task(
-    mut tcp_stream: TcpStream,
-    tls_acceptor: TlsAcceptor,
-    service: Svc,
-) -> JoinHandle<()> {
-    tokio::task::spawn(async move {
-        if let Some(err) = confirm_request_as_tls(&tcp_stream).await {
-            warn!("{err}");
-            discard_stream(&mut tcp_stream).await;
-            return;
-        };
+    fn spawn_handler_task(&self, mut tcp_stream: TcpStream) -> JoinHandle<()> {
+        let handler = self.clone();
+        tokio::task::spawn(async move {
+            if let Some(err) = confirm_request_as_tls(&tcp_stream).await {
+                warn!("{err}");
+                discard_stream(&mut tcp_stream).await;
+                return;
+            };
 
-        handle_tls_connection(tcp_stream, tls_acceptor, service).await;
-    })
-}
-
-async fn handle_tls_connection(tcp_stream: TcpStream, tls_acceptor: TlsAcceptor, service: Svc) {
-    let svc = service_fn(async |request| service.call(request).await);
-    match tls_acceptor.accept(tcp_stream).await {
-        Ok(stream) => {
-            let io = TokioIo::new(stream);
-            if let Err(err) = http1::Builder::new()
-                .timer(TokioTimer::new())
-                .serve_connection(io, svc)
-                .await
-            {
-                warn!("Error in service connection: {}", err);
-            }
-        }
-        Err(e) => warn!("Error during TLS handshake: {e}"),
+            handler.handle_tls_connection(tcp_stream).await;
+        })
     }
 
-    debug!("closed stream");
+    async fn handle_tls_connection(&self, tcp_stream: TcpStream) {
+        let svc = service_fn(async |request| self.service.call(request).await);
+        match self.tls_acceptor.accept(tcp_stream).await {
+            Ok(stream) => {
+                let io = TokioIo::new(stream);
+                if let Err(err) = http1::Builder::new()
+                    .timer(TokioTimer::new())
+                    .serve_connection(io, svc)
+                    .await
+                {
+                    warn!("Error in service connection: {}", err);
+                }
+            }
+            Err(e) => warn!("Error during TLS handshake: {e}"),
+        }
+
+        debug!("closed stream");
+    }
 }
 
 #[async_trait]
@@ -126,7 +124,7 @@ impl AsyncStart for HttpsListener {
         loop {
             match self.tcp_listener.accept().await {
                 Ok((tcp_stream, _addr)) => {
-                    spawn_handler_task(tcp_stream, self.tls_acceptor.clone(), self.service.clone());
+                    self.spawn_handler_task(tcp_stream);
                 }
                 Err(e) => {
                     debug!("Error during TCP connection: {e}");
@@ -138,19 +136,17 @@ impl AsyncStart for HttpsListener {
 
 async fn confirm_request_as_tls(stream: &TcpStream) -> Option<impl Error + use<>> {
     let mut buf = [0u8; TLS_CLIENT_HELLO_HEAD_SIZE];
-    if let Ok(_) = stream.peek(&mut buf).await {
-        if buf != TLS_CLIENT_HELLO_HEAD {
-            let Ok(peer_addr) = stream.peer_addr() else {
-                return Some(WebMQError::TLS(
-                    "Received non-TLS data from peer".to_owned(),
-                ));
-            };
+    if stream.peek(&mut buf).await.is_ok() && buf != TLS_CLIENT_HELLO_HEAD {
+        let Ok(peer_addr) = stream.peer_addr() else {
+            return Some(WebMQError::TLS(
+                "Received non-TLS data from peer".to_owned(),
+            ));
+        };
 
-            return Some(WebMQError::TLS(format!(
-                "Received non-TLS data from peer: {}",
-                peer_addr.to_string()
-            )));
-        }
+        return Some(WebMQError::TLS(format!(
+            "Received non-TLS data from peer: {}",
+            peer_addr
+        )));
     }
 
     None

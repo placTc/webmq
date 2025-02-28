@@ -4,18 +4,10 @@ use log::{info, warn};
 
 const CONFIGURATION_FILE: &str = "./configuration";
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Default)]
 pub struct Settings {
     #[serde(default = "NetworkSettings::default")]
     pub network: NetworkSettings,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            network: NetworkSettings::default(),
-        }
-    }
 }
 
 impl Settings {

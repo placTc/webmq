@@ -26,9 +26,9 @@ pub fn get_file_buffer(file: &Path) -> Result<Vec<u8>, WebMQError> {
 
     let mut buffer = vec![0; cert_file_length];
 
-    match std::fs::File::open(&file).and_then(|mut file| {
+    match std::fs::File::open(file).map(|mut file| {
         let _ = file.read(&mut buffer);
-        Ok(buffer)
+        buffer
     }) {
         Err(e) => Err(WebMQError::File(format!(
             "Couldn't open file {}: {}",

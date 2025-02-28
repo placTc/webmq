@@ -20,7 +20,7 @@ pub mod utils;
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     env_logger::init();
     debug!("Initialized logger");
-    let _ = rustls::crypto::ring::default_provider()
+    rustls::crypto::ring::default_provider()
         .install_default()
         .expect("Failed to install rustls cryptography provider");
     debug!("Installed rustls cryptography provider.");
@@ -62,7 +62,8 @@ impl Service for HyperService {
 
     fn call(&self, _: Self::Input) -> Self::Output {
         Box::pin(async move {
-            Ok(Response::builder().header("Connection", "close")
+            Ok(Response::builder()
+                .header("Connection", "close")
                 .body(Full::new(Bytes::from("Hello, World!")))
                 .unwrap())
         })

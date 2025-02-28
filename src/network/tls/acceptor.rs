@@ -48,21 +48,21 @@ pub fn create_tls_acceptor(
 }
 
 fn load_certificate(certificate_path: &Path) -> Result<CertificateDer, WebMQError> {
-    match get_file_buffer(certificate_path).and_then(|buf| Ok(CertificateDer::from(buf))) {
+    match get_file_buffer(certificate_path).map(CertificateDer::from) {
         Ok(a) => Ok(a),
         Err(e) => Err(WebMQError::Config(format!(
             "Couldn't load certificate: {}",
-            e.to_string()
+            e
         ))),
     }
 }
 
 fn load_private_key(private_key_path: &Path) -> Result<PrivateKeyDer, WebMQError> {
-    match get_file_buffer(private_key_path).and_then(|buf| Ok(PrivateKeyDer::Pkcs1(buf.into()))) {
+    match get_file_buffer(private_key_path).map(|buf| PrivateKeyDer::Pkcs1(buf.into())) {
         Ok(a) => Ok(a),
         Err(e) => Err(WebMQError::Config(format!(
             "Couldn't load private key: {}",
-            e.to_string()
+            e
         ))),
     }
 }
