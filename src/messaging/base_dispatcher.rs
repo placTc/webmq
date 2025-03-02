@@ -5,7 +5,7 @@ use tokio::sync::Mutex;
 
 use crate::core::{errors::WebMQError, traits::AsyncQueue};
 
-use super::dispatcher::MessagingDispatcher;
+use crate::core::traits::MessagingDispatcher;
 
 type QueueFac = Pin<Box<dyn Fn() -> Box<dyn AsyncQueue<Vec<u8>> + Send> + Send + Sync>>;
 
