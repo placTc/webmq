@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use http_body_util::Full;
 use hyper::{
     Request, Response,
@@ -14,12 +12,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::core::{errors::WebMQError, traits::Adapter};
 
 type Err = WebMQError;
-type Pb<T> = Pin<Box<T>>;
-type Fut<T> = Pb<dyn Future<Output = T> + Send>;
 
 pub type Req = Request<Incoming>;
 pub type Res = Result<Response<Full<Bytes>>, Err>;
-pub type HyperSvc = dyn Adapter<Input = Req, Output = Fut<Res>> + Send + Sync;
+pub type HyperSvc = dyn Adapter<Input = Req, Output = Res> + Send + Sync;
 
 pub async fn hyper_http1_handler<S>(stream: S, service: &HyperSvc)
 where

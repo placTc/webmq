@@ -5,6 +5,7 @@ pub enum WebMQError {
     Config(String),
     File(String),
     TLS(String),
+    Data(String),
     Unrecoverable,
 }
 
@@ -21,6 +22,7 @@ impl WebMQError {
             WebMQError::Config(msg) => msg.as_str(),
             WebMQError::File(msg) => msg.as_str(),
             WebMQError::TLS(msg) => msg.as_str(),
+            WebMQError::Data(msg) => msg.as_str(),
             WebMQError::Unrecoverable => "The program encountered an unrecoverable error.",
         }
     }
